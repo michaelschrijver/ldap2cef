@@ -1,5 +1,5 @@
 #!/usr/bin/env python -u
-# vim: ts=4 sts=4 sw=4
+# vim: ts=8 sts=4 sw=4
 import re
 import repoze.lru
 import collections
@@ -12,7 +12,7 @@ class LDAPConnection(object):
     def __init__(self, address):
         self.address = address 
         self.bind_dn = None
-	self.new_bind_dn = None
+        self.new_bind_dn = None
         self.last_op = None
         self.op_subject = None
 
@@ -61,12 +61,12 @@ class LDAPProcessor(object):
         message_match = self.ldap_message_re.match(message)
         if message_match:
             def dequote(s):
-		if s:
-			# XXX
-			if s[0] == '"' and s[-1] == '"':
-			    return s[1:-1]
-			else:
-			    return s
+                if s:
+                        # XXX
+                        if s[0] == '"' and s[-1] == '"':
+                            return s[1:-1]
+                        else:
+                            return s
             attributes = dict([(m.group('key'), dequote(m.group('value'))) for m in self.ldap_attributes_re.finditer(message_match.group('attributes'))])
             command = message_match.group('command')
             connection_id = int(message_match.group('conn'))
@@ -80,9 +80,9 @@ class LDAPProcessor(object):
                     pass # XXX log error
                 else:
                     if command == 'BIND':
-			if attributes.has_key('anonymous'):
-			    connection.new_bind_dn = 'ANONYMOUS'
-			else:
+                        if attributes.has_key('anonymous'):
+                            connection.new_bind_dn = 'ANONYMOUS'
+                        else:
                             connection.new_bind_dn = attributes['dn']
                     elif command in ('MOD', 'DEL', 'ADD'):
                         if attributes.has_key('dn'):
@@ -94,11 +94,11 @@ class LDAPProcessor(object):
                                 connection.bind_dn = connection.new_bind_dn
                             self.cef_log(connection_id, self.EVENT_BIND, connection, attributes)
                         elif connection.last_op == 'DEL':
-			    self.cef_log(connection_id, self.EVENT_DELETE, connection, attributes)
+                            self.cef_log(connection_id, self.EVENT_DELETE, connection, attributes)
                         elif connection.last_op == 'ADD':
                             self.cef_log(connection_id, self.EVENT_ADD, connection, attributes)
                         elif connection.last_op == 'MOD':
-		            self.cef_log(connection_id, self.EVENT_MODIFY, connection, attributes)
+                            self.cef_log(connection_id, self.EVENT_MODIFY, connection, attributes)
                     elif command == 'UNBIND':
                         connection.bind_dn = None
 
