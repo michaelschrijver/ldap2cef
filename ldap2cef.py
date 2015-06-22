@@ -1,4 +1,5 @@
 #!/usr/bin/env python -u
+# vim: ts=4 sts=4 sw=4
 import re
 import repoze.lru
 import collections
