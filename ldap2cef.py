@@ -69,7 +69,7 @@ class LDAPProcessor(object):
             end = str(time.time())
             ))
 
-    def process_message(self, message):
+    def process_message(self, server, message):
         """Line by line call"""
         message_match = self.ldap_message_re.match(message)
         if message_match:
@@ -83,12 +83,13 @@ class LDAPProcessor(object):
             attributes = dict([(m.group('key'), dequote(m.group('value'))) for m in self.ldap_attributes_re.finditer(message_match.group('attributes'))])
             command = message_match.group('command')
             connection_id = int(message_match.group('conn'))
+            cache_key = "{}:{}".format(server,connection_id)
             if command == 'ACCEPT':
-                self._connections.put(connection_id, LDAPConnection(attributes['IP']))
+                self._connections.put(cache_key, LDAPConnection(attributes['IP']))
             elif command == 'closed':
-                self._connections.invalidate(connection_id)
+                self._connections.invalidate(cache_key)
             else:
-                connection = self._connections.get(connection_id)
+                connection = self._connections.get(cache_key)
                 if not connection:
                     if DEBUG:
                         print("No connection id for {}".format(message))
@@ -124,14 +125,15 @@ class LDAPProcessor(object):
 
 if __name__ == '__main__':
     """Strip date and get message, forward to process_message when there is still stdin"""
-    ldap_syslog_re = re.compile('[a-z]{3} +\d+ \d{2}:\d{2}:\d{2} [\w-]+ slapd\[\d+\]: (?P<message>.*)', re.I)
+    # Jun 23 08:34:59 aa-ldap-aaaa2 slapd[2197]: conn=1022
+    ldap_syslog_re = re.compile('[a-z]{3} +\d+ \d{2}:\d{2}:\d{2} (?P<server>[\w-]+) slapd\[\d+\]: (?P<message>.*)', re.I)
     processor = LDAPProcessor()
     while True:
         line = sys.stdin.readline().rstrip()
         if line == '': break
         m = ldap_syslog_re.match(line)
         if m:
-            processor.process_message(m.group('message'))
+            processor.process_message(m.group('server'),m.group('message'))
         else:
             if DEBUG:
                 print("UNPARSED: {}".format(line))
