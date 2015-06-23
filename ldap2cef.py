@@ -105,7 +105,8 @@ class LDAPProcessor(object):
                     connection.last_op = command
 
 if __name__ == '__main__':
-    ldap_syslog_re = re.compile('[a-z]{3} +\d+ \d{2}:\d{2}:\d{2} \w+ slapd\[\d+\]: (?P<message>.*)', re.I)
+    """Strip date and get message, forward to process_message when there is still stdin"""
+    ldap_syslog_re = re.compile('[a-z]{3} +\d+ \d{2}:\d{2}:\d{2} [\w-]+ slapd\[\d+\]: (?P<message>.*)', re.I)
     processor = LDAPProcessor()
     while True:
         line = sys.stdin.readline().rstrip()
