@@ -8,6 +8,7 @@ import syslog
 import sys
 
 class LDAPConnection(object):
+    """This will hold the connection info found by LDAPProcessor"""
     __slots__ = ('address', 'bind_dn', 'new_bind_dn', 'last_op', 'op_subject')
     def __init__(self, address):
         self.address = address 
@@ -17,6 +18,10 @@ class LDAPConnection(object):
         self.op_subject = None
 
 class LDAPProcessor(object):
+    """Main processor, process_message will get called for each line of stdin
+    
+    Stuff will be kept in a lru cache
+    """
     LRU_CONN_CACHE_SIZE = 65536
     LRU_CONN_CACHE_TIMEOUT = 24*60*60
 
@@ -37,12 +42,14 @@ class LDAPProcessor(object):
     OUTCOME_SUCCESS = 'success'
 
     def cef_log(self, connection_id, event_id, connection, attributes):
+        """Will get called if we have a matching log"""
         err = attributes.get('err', '')
         outcome = self.OUTCOME_SUCCESS if err == '0' else self.OUTCOME_FAILURE
         try: src, spt = connection.address.split(':')
         except ValueError: src = spt = ''
 
         # XXX
+        # CEF:Version|Device Vendor|Device Product|Device Version|Signature ID|Name|Severity|[Extension]
         print """CEF:0|mozilla|openldap|1.0|{event_id}|{event_name}|6|src={src} spt={spt} cs1=\"{bind_name}\" suser={user} outcome={outcome} cs1Label=BindDN cn1={conn_id} cs2Label=SubjectDN cs2=\"{subject_dn}\" cn1Label=ConnId cn2={err} cn2Label=LdapCode end={end}""".format(
                 conn_id = connection_id,
                 event_id = event_id,
@@ -58,6 +65,7 @@ class LDAPProcessor(object):
                 )
 
     def process_message(self, message):
+        """Line by line call"""
         message_match = self.ldap_message_re.match(message)
         if message_match:
             def dequote(s):
