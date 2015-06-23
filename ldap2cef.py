@@ -14,7 +14,7 @@ class LDAPConnection(object):
     """This will hold the connection info found by LDAPProcessor"""
     __slots__ = ('address', 'bind_dn', 'new_bind_dn', 'last_op', 'op_subject')
     def __init__(self, address):
-        self.address = address 
+        self.address = address
         self.bind_dn = None
         self.new_bind_dn = None
         self.last_op = None
@@ -48,8 +48,10 @@ class LDAPProcessor(object):
         """Will get called if we have a matching log"""
         err = attributes.get('err', '')
         outcome = self.OUTCOME_SUCCESS if err == '0' else self.OUTCOME_FAILURE
-        try: src, spt = connection.address.split(':')
-        except ValueError: src = spt = ''
+        try:
+            src, spt = connection.address.split(':')
+        except ValueError:
+            src = spt = ''
 
         # XXX
         # CEF:Version|Device Vendor|Device Product|Device Version|Signature ID|Name|Severity|[Extension]
@@ -65,7 +67,7 @@ class LDAPProcessor(object):
             subject_dn = connection.op_subject,
             user = connection.bind_dn,
             end = str(time.time())
-            )
+            ))
 
     def process_message(self, message):
         """Line by line call"""
@@ -73,7 +75,7 @@ class LDAPProcessor(object):
         if message_match:
             def dequote(s):
                 if s:
-                    # XXX
+                    # XXX Not pretty, but there is no better way (instead of stripping ALL "s)
                     if s[0] == '"' and s[-1] == '"':
                         return s[1:-1]
                     else:
@@ -92,7 +94,7 @@ class LDAPProcessor(object):
                         print("No connection id for {}".format(message))
                 else:
                     if command == 'BIND':
-                        if attributes.has_key('anonymous'):
+                        if 'anonymous' in attributes:
                             connection.new_bind_dn = 'ANONYMOUS'
                         else:
                             connection.new_bind_dn = attributes['dn']
