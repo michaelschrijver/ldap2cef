@@ -8,7 +8,7 @@ import time
 import syslog
 import sys
 
-DEBUG=True
+DEBUG=False
 
 class LDAPConnection(object):
     """This will hold the connection info found by LDAPProcessor"""
