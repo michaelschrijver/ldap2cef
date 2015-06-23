@@ -1,5 +1,6 @@
 #!/usr/bin/env python -u
 # vim: ts=8 sts=4 sw=4
+from __future__ import print_function
 import re
 import repoze.lru
 import collections
@@ -52,7 +53,7 @@ class LDAPProcessor(object):
 
         # XXX
         # CEF:Version|Device Vendor|Device Product|Device Version|Signature ID|Name|Severity|[Extension]
-        print """CEF:0|mozilla|openldap|1.0|{event_id}|{event_name}|6|src={src} spt={spt} cs1=\"{bind_name}\" suser={user} outcome={outcome} cs1Label=BindDN cn1={conn_id} cs2Label=SubjectDN cs2=\"{subject_dn}\" cn1Label=ConnId cn2={err} cn2Label=LdapCode end={end}""".format(
+        print("""CEF:0|mozilla|openldap|1.0|{event_id}|{event_name}|6|src={src} spt={spt} cs1=\"{bind_name}\" suser={user} outcome={outcome} cs1Label=BindDN cn1={conn_id} cs2Label=SubjectDN cs2=\"{subject_dn}\" cn1Label=ConnId cn2={err} cn2Label=LdapCode end={end}""".format(
             conn_id = connection_id,
             event_id = event_id,
             event_name = self.EVENT_NAMES.get(event_id, ''),
@@ -87,7 +88,8 @@ class LDAPProcessor(object):
             else:
                 connection = self._connections.get(connection_id)
                 if not connection:
-                    pass # XXX log error
+                    if DEBUG:
+                        print("No connection id for {}".format(message))
                 else:
                     if command == 'BIND':
                         if attributes.has_key('anonymous'):
@@ -116,7 +118,7 @@ class LDAPProcessor(object):
         else:
             # No message match
             if DEBUG:
-                print "NOMSGMATCH {}".format(message)
+                print("NOMSGMATCH {}".format(message))
 
 if __name__ == '__main__':
     """Strip date and get message, forward to process_message when there is still stdin"""
@@ -130,4 +132,4 @@ if __name__ == '__main__':
             processor.process_message(m.group('message'))
         else:
             if DEBUG:
-                print "UNPARSED: {}".format(line)
+                print("UNPARSED: {}".format(line))
