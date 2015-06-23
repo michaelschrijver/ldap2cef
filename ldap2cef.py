@@ -28,7 +28,7 @@ class LDAPProcessor(object):
     LRU_CONN_CACHE_SIZE = 65536
     LRU_CONN_CACHE_TIMEOUT = 24*60*60
 
-    ldap_message_re = re.compile('conn=(?P<conn>\d+) (?:op|fd)=\d+ (?P<command>\S+)(?P<attributes> .*)')
+    ldap_message_re = re.compile('conn=(?P<conn>\d+) (?:op|fd)=\d+ (?P<command>\S+)(?P<attributes> ?.*)')
     ldap_attributes_re = re.compile(' (?P<key>[^ =]+)(?:=(?P<value>\S+|"[^"]*"))?')
 
     def __init__(self):
