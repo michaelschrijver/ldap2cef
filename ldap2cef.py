@@ -53,18 +53,18 @@ class LDAPProcessor(object):
         # XXX
         # CEF:Version|Device Vendor|Device Product|Device Version|Signature ID|Name|Severity|[Extension]
         print """CEF:0|mozilla|openldap|1.0|{event_id}|{event_name}|6|src={src} spt={spt} cs1=\"{bind_name}\" suser={user} outcome={outcome} cs1Label=BindDN cn1={conn_id} cs2Label=SubjectDN cs2=\"{subject_dn}\" cn1Label=ConnId cn2={err} cn2Label=LdapCode end={end}""".format(
-                conn_id = connection_id,
-                event_id = event_id,
-                event_name = self.EVENT_NAMES.get(event_id, ''),
-                err = err,
-                outcome = outcome,
-                src = src,
-                spt = spt,
-                bind_name = connection.bind_dn,
-                subject_dn = connection.op_subject,
-                user = connection.bind_dn,
-                end = str(time.time())
-                )
+            conn_id = connection_id,
+            event_id = event_id,
+            event_name = self.EVENT_NAMES.get(event_id, ''),
+            err = err,
+            outcome = outcome,
+            src = src,
+            spt = spt,
+            bind_name = connection.bind_dn,
+            subject_dn = connection.op_subject,
+            user = connection.bind_dn,
+            end = str(time.time())
+            )
 
     def process_message(self, message):
         """Line by line call"""
@@ -72,11 +72,11 @@ class LDAPProcessor(object):
         if message_match:
             def dequote(s):
                 if s:
-                        # XXX
-                        if s[0] == '"' and s[-1] == '"':
-                            return s[1:-1]
-                        else:
-                            return s
+                    # XXX
+                    if s[0] == '"' and s[-1] == '"':
+                        return s[1:-1]
+                    else:
+                        return s
             attributes = dict([(m.group('key'), dequote(m.group('value'))) for m in self.ldap_attributes_re.finditer(message_match.group('attributes'))])
             command = message_match.group('command')
             connection_id = int(message_match.group('conn'))
