@@ -7,6 +7,8 @@ import time
 import syslog
 import sys
 
+DEBUG=True
+
 class LDAPConnection(object):
     """This will hold the connection info found by LDAPProcessor"""
     __slots__ = ('address', 'bind_dn', 'new_bind_dn', 'last_op', 'op_subject')
@@ -111,6 +113,10 @@ class LDAPProcessor(object):
                         connection.bind_dn = None
 
                     connection.last_op = command
+        else:
+            # No message match
+            if DEBUG:
+                print "NOMSGMATCH {}".format(message)
 
 if __name__ == '__main__':
     """Strip date and get message, forward to process_message when there is still stdin"""
@@ -122,3 +128,6 @@ if __name__ == '__main__':
         m = ldap_syslog_re.match(line)
         if m:
             processor.process_message(m.group('message'))
+        else:
+            if DEBUG:
+                print "UNPARSED: {}".format(line)
