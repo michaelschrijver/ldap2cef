@@ -40,7 +40,6 @@ class LDAPProcessor(object):
 
     def __init__(self):
         self._connections = repoze.lru.ExpiringLRUCache(self.LRU_CONN_CACHE_SIZE, self.LRU_CONN_CACHE_TIMEOUT)
-        self._operations = repoze.lru.ExpiringLRUCache(self.LRU_CONN_CACHE_SIZE * 5, 3600)
 
     EVENT_BIND = 1
     EVENT_MODIFY = 2
