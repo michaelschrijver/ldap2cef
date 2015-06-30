@@ -80,7 +80,10 @@ class LDAPProcessor(object):
     OUTCOME_SUCCESS = 'success'
 
     def __init__(self, logger):
-        self._connections = repoze.lru.ExpiringLRUCache(self.LRU_CONN_CACHE_SIZE, self.LRU_CONN_CACHE_TIMEOUT)
+	if hasattr(repoze.lru, 'ExpiringLRUCache'):
+	        self._connections = repoze.lru.ExpiringLRUCache(self.LRU_CONN_CACHE_SIZE, self.LRU_CONN_CACHE_TIMEOUT)
+	else:
+		self._connections = repoze.lru.LRUCache(self.LRU_CONN_CACHE_SIZE)
         self._logger = logger
 
     def cef_log(self, connection_id, event_id, connection, attributes):
