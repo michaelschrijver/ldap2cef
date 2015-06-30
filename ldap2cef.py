@@ -83,7 +83,6 @@ class LDAPProcessor(object):
         if message_match:
             def dequote(s):
                 if s:
-                    # XXX Not pretty, but there is no better way (instead of stripping ALL "s)
                     if s[0] == '"' and s[-1] == '"':
                         return self.quoted_re.sub('\\1', s[1:-1])
                     else:
