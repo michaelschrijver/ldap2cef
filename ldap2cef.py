@@ -36,7 +36,8 @@ class LDAPProcessor(object):
     LRU_CONN_CACHE_TIMEOUT = 24*60*60
 
     ldap_message_re = re.compile('conn=(?P<conn>\d+) (?:op|fd)=\d+ (?P<command>\S+)(?P<attributes> ?.*)')
-    ldap_attributes_re = re.compile(' (?P<key>[^ =]+)(?:=(?P<value>\S+|"[^"]*"))?')
+    ldap_attributes_re = re.compile(' (?P<key>[^ =]+)(?:=(?P<value>"([^"\\\\]|\\\\.)*"|\S+))?')
+    quoted_re = re.compile('\\\\(.)')
 
     def __init__(self):
         self._connections = repoze.lru.ExpiringLRUCache(self.LRU_CONN_CACHE_SIZE, self.LRU_CONN_CACHE_TIMEOUT)
@@ -84,7 +85,7 @@ class LDAPProcessor(object):
                 if s:
                     # XXX Not pretty, but there is no better way (instead of stripping ALL "s)
                     if s[0] == '"' and s[-1] == '"':
-                        return s[1:-1]
+                        return self.quoted_re.sub('\\1', s[1:-1])
                     else:
                         return s
             attributes = dict([(m.group('key'), dequote(m.group('value'))) for m in self.ldap_attributes_re.finditer(message_match.group('attributes'))])
