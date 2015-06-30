@@ -6,6 +6,7 @@ import collections
 import time
 import syslog
 import sys
+import optparse # not argparse for 2.6 compatibility
 
 DEBUG=False
 OUTFILE='/var/log/arcsight/ldapout.log'
@@ -149,7 +150,17 @@ if __name__ == '__main__':
     """Strip date and get message, forward to process_message when there is still stdin"""
     # Jun 23 08:34:59 aa-ldap-aaaa2 slapd[2197]: conn=1022
     ldap_syslog_re = re.compile('[a-z]{3} +\d+ \d{2}:\d{2}:\d{2} (?P<server>[\w-]+) slapd\[\d+\]: (?P<message>.*)', re.I)
-    processor = LDAPProcessor(FileLogger(OUTFILE))
+    parser = optparse.OptionParser()
+    parser.add_option('-f', dest = 'filename', help = 'Write output to file.', default = OUTFILE)
+    parser.add_option('-s', dest = 'syslog', help = 'Write output to syslog.', default = False)
+    options, args = parser.parse_args()
+       
+    if options.syslog:
+        logger = SyslogLogger('ldap2cef')
+    else:
+        logger = FileLogger(options.filename)
+
+    processor = LDAPProcessor(logger)
     while True:
         line = sys.stdin.readline().rstrip()
         if line == '': break
