@@ -10,7 +10,7 @@ import optparse # not argparse for 2.6 compatibility
 
 DEBUG=False
 OUTFILE='/var/log/arcsight/ldapout.log'
-DEBUGFILE='/tmp/ldap-debug'
+DEBUGFILE='/tmp/ldap2cef-debug'
 
 def debug(message):
     if DEBUG:
@@ -33,10 +33,13 @@ class LDAPLogger(object):
     EVENT_MODIFY = 2
     EVENT_ADD = 3
     EVENT_DELETE = 4
-    EVENT_NAMES = {EVENT_BIND: 'BIND', EVENT_MODIFY: 'MODIFY', EVENT_ADD: 'ADD', EVENT_DELETE: 'DELETE'}
+    EVENT_ACCEPT = 5
+    EVENT_CLOSE = 6
+    EVENT_UNBIND = 7
+    EVENT_NAMES = {EVENT_BIND: 'BIND', EVENT_MODIFY: 'MODIFY', EVENT_ADD: 'ADD', EVENT_DELETE: 'DELETE', EVENT_ACCEPT: 'ACCEPT', EVENT_CLOSE: 'CLOSE', EVENT_UNBIND: 'UNBIND'}
 
     def format_message(self, connection_id, event_id, connection, attributes):
-        return """CEF:0|mozilla|openldap|1.0|{event_id}|{event_name}|6|src={src} spt={spt} suser={user} cs1=\"{bind_name}\" cs1Label=BindDN  outcome={outcome} cs2=\"{subject_dn}\" cs2Label=SubjectDN cn1={conn_id} cn1Label=ConnId cn2={err} cn2Label=LdapCode end={end}\n""".format(
+        return """CEF:0|OpenLDAP|SLAPD|1.0|{event_id}|{event_name}|6|src={src} spt={spt} suser={user} cs1=\"{bind_name}\" cs1Label=BindDN  outcome={outcome} cs2=\"{subject_dn}\" cs2Label=SubjectDN cn1={conn_id} cn1Label=ConnId cn2={err} cn2Label=LdapCode end={end}\n""".format(
                 conn_id = connection_id,
                 event_id = event_id,
                 event_name = self.EVENT_NAMES.get(event_id, ''),
@@ -111,15 +114,20 @@ class LDAPProcessor(object):
             connection_id = int(message_match.group('conn'))
             cache_key = "{}:{}".format(server,connection_id)
             if command == 'ACCEPT':
-                self._connections.put(cache_key, LDAPConnection(attributes['IP']))
-            elif command == 'closed':
-                self._connections.invalidate(cache_key)
+		connection = LDAPConnection(attributes['IP'])
+                self._connections.put(cache_key, connection)
+		attributes['err'] = '0'
+		self.cef_log(connection_id, LDAPLogger.EVENT_ACCEPT, connection, attributes)
             else:
                 connection = self._connections.get(cache_key)
                 if not connection:
                     if DEBUG:
                         debug("No connection id for {}".format(message))
                 else:
+		    if command == 'closed':
+	                self._connections.invalidate(cache_key)
+			attributes['err'] = '0'
+			self.cef_log(connection_id, LDAPLogger.EVENT_CLOSE, connection, attributes)
                     if command == 'BIND':
                         if 'anonymous' in attributes:
                             connection.new_bind_dn = 'ANONYMOUS'
@@ -142,7 +150,8 @@ class LDAPProcessor(object):
                             self.cef_log(connection_id, LDAPLogger.EVENT_MODIFY, connection, attributes)
                     elif command == 'UNBIND':
                         connection.bind_dn = None
-
+			attributes['err'] = '0'
+			self.cef_log(connection_id, LDAPLogger.EVENT_UNBIND, connection, attributes)
                     connection.last_op = command
         else:
             # No message match
@@ -155,13 +164,16 @@ if __name__ == '__main__':
     ldap_syslog_re = re.compile('[a-z]{3} +\d+ \d{2}:\d{2}:\d{2} (?P<server>[\w-]+) slapd\[\d+\]: (?P<message>.*)', re.I)
     parser = optparse.OptionParser()
     parser.add_option('-f', dest = 'filename', help = 'Write output to file.', default = OUTFILE)
-    parser.add_option('-s', dest = 'syslog', help = 'Write output to syslog.', default = False)
+    parser.add_option('-s', dest = 'syslog', action = 'store_true', help = 'Write output to syslog.', default = False)
+    parser.add_option('-d', dest = 'debug', action = 'store_true', help = 'Enable debug logging.', default = False)
     options, args = parser.parse_args()
        
     if options.syslog:
         logger = SyslogLogger('ldap2cef')
     else:
         logger = FileLogger(options.filename)
+
+    DEBUG = options.debug
 
     processor = LDAPProcessor(logger)
     while True:
