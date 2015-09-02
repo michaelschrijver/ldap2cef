@@ -39,7 +39,13 @@ class LDAPLogger(object):
     EVENT_NAMES = {EVENT_BIND: 'BIND', EVENT_MODIFY: 'MODIFY', EVENT_ADD: 'ADD', EVENT_DELETE: 'DELETE', EVENT_ACCEPT: 'ACCEPT', EVENT_CLOSE: 'CLOSE', EVENT_UNBIND: 'UNBIND'}
 
     def format_message(self, connection_id, event_id, connection, attributes):
-        return """CEF:0|OpenLDAP|SLAPD|1.0|{event_id}|{event_name}|6|src={src} spt={spt} suser={user} cs1=\"{bind_name}\" cs1Label=BindDN  outcome={outcome} cs2=\"{subject_dn}\" cs2Label=SubjectDN cn1={conn_id} cn1Label=ConnId cn2={err} cn2Label=LdapCode end={end}\n""".format(
+        # Get destinationUserId (duser) from cs2 if there is a uid in there
+        if 'uid' in connection.op_subject:
+            duser = connection.op_subject[5:].split(',')[0]
+        else:
+            duser = None
+
+        return """CEF:0|OpenLDAP|SLAPD|1.0|{event_id}|{event_name}|6|src={src} spt={spt} suser={suser} duser={duser} cs1=\"{bind_name}\" cs1Label=BindDN  outcome={outcome} cs2=\"{subject_dn}\" cs2Label=SubjectDN cn1={conn_id} cn1Label=ConnId cn2={err} cn2Label=LdapCode end={end}\n""".format(
                 conn_id = connection_id,
                 event_id = event_id,
                 event_name = self.EVENT_NAMES.get(event_id, ''),
@@ -49,7 +55,8 @@ class LDAPLogger(object):
                 spt = attributes['spt'],
                 bind_name = connection.bind_dn,
                 subject_dn = connection.op_subject,
-                user = connection.bind_dn,
+                suser = connection.bind_dn,
+                duser = duser,
                 end = str(time.time())
                 )
 
