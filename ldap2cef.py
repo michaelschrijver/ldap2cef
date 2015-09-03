@@ -39,7 +39,13 @@ class LDAPLogger(object):
     EVENT_NAMES = {EVENT_BIND: 'BIND', EVENT_MODIFY: 'MODIFY', EVENT_ADD: 'ADD', EVENT_DELETE: 'DELETE', EVENT_ACCEPT: 'ACCEPT', EVENT_CLOSE: 'CLOSE', EVENT_UNBIND: 'UNBIND'}
 
     def format_message(self, connection_id, event_id, connection, attributes):
-        return """CEF:0|OpenLDAP|SLAPD|1.0|{event_id}|{event_name}|6|src={src} spt={spt} suser={user} cs1=\"{bind_name}\" cs1Label=BindDN  outcome={outcome} cs2=\"{subject_dn}\" cs2Label=SubjectDN cn1={conn_id} cn1Label=ConnId cn2={err} cn2Label=LdapCode end={end}\n""".format(
+        # Get destinationUserId (duser) from cs2 if there is a uid in there
+        if 'uid' in connection.op_subject:
+            duser = connection.op_subject[5:].split(',')[0]
+        else:
+            duser = None
+
+        return """CEF:0|OpenLDAP|SLAPD|1.0|{event_id}|{event_name}|6|src={src} spt={spt} suser={suser} duser={duser} cs1=\"{bind_name}\" cs1Label=BindDN  outcome={outcome} cs2=\"{subject_dn}\" cs2Label=SubjectDN cn1={conn_id} cn1Label=ConnId cn2={err} cn2Label=LdapCode end={end}\n""".format(
                 conn_id = connection_id,
                 event_id = event_id,
                 event_name = self.EVENT_NAMES.get(event_id, ''),
@@ -49,7 +55,8 @@ class LDAPLogger(object):
                 spt = attributes['spt'],
                 bind_name = connection.bind_dn,
                 subject_dn = connection.op_subject,
-                user = connection.bind_dn,
+                suser = connection.bind_dn,
+                duser = duser,
                 end = str(time.time())
                 )
 
@@ -83,10 +90,10 @@ class LDAPProcessor(object):
     OUTCOME_SUCCESS = 'success'
 
     def __init__(self, logger):
-	if hasattr(repoze.lru, 'ExpiringLRUCache'):
-	        self._connections = repoze.lru.ExpiringLRUCache(self.LRU_CONN_CACHE_SIZE, self.LRU_CONN_CACHE_TIMEOUT)
-	else:
-		self._connections = repoze.lru.LRUCache(self.LRU_CONN_CACHE_SIZE)
+        if hasattr(repoze.lru, 'ExpiringLRUCache'):
+                self._connections = repoze.lru.ExpiringLRUCache(self.LRU_CONN_CACHE_SIZE, self.LRU_CONN_CACHE_TIMEOUT)
+        else:
+                self._connections = repoze.lru.LRUCache(self.LRU_CONN_CACHE_SIZE)
         self._logger = logger
 
     def cef_log(self, connection_id, event_id, connection, attributes):
@@ -114,20 +121,20 @@ class LDAPProcessor(object):
             connection_id = int(message_match.group('conn'))
             cache_key = "{}:{}".format(server,connection_id)
             if command == 'ACCEPT':
-		connection = LDAPConnection(attributes['IP'])
+                connection = LDAPConnection(attributes['IP'])
                 self._connections.put(cache_key, connection)
-		attributes['err'] = '0'
-		self.cef_log(connection_id, LDAPLogger.EVENT_ACCEPT, connection, attributes)
+                attributes['err'] = '0'
+                self.cef_log(connection_id, LDAPLogger.EVENT_ACCEPT, connection, attributes)
             else:
                 connection = self._connections.get(cache_key)
                 if not connection:
                     if DEBUG:
                         debug("No connection id for {}".format(message))
                 else:
-		    if command == 'closed':
-	                self._connections.invalidate(cache_key)
-			attributes['err'] = '0'
-			self.cef_log(connection_id, LDAPLogger.EVENT_CLOSE, connection, attributes)
+                    if command == 'closed':
+                        self._connections.invalidate(cache_key)
+                        attributes['err'] = '0'
+                        self.cef_log(connection_id, LDAPLogger.EVENT_CLOSE, connection, attributes)
                     if command == 'BIND':
                         if 'anonymous' in attributes:
                             connection.new_bind_dn = 'ANONYMOUS'
@@ -150,8 +157,8 @@ class LDAPProcessor(object):
                             self.cef_log(connection_id, LDAPLogger.EVENT_MODIFY, connection, attributes)
                     elif command == 'UNBIND':
                         connection.bind_dn = None
-			attributes['err'] = '0'
-			self.cef_log(connection_id, LDAPLogger.EVENT_UNBIND, connection, attributes)
+                        attributes['err'] = '0'
+                        self.cef_log(connection_id, LDAPLogger.EVENT_UNBIND, connection, attributes)
                     connection.last_op = command
         else:
             # No message match
