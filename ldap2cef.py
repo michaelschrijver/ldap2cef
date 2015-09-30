@@ -132,11 +132,6 @@ class LDAPProcessor(object):
                 self._connections.put(cache_key, connection)
                 attributes['err'] = '0'
                 self.cef_log(connection_id, LDAPLogger.EVENT_ACCEPT, connection, attributes)
-
-                connection = LDAPConnection(attributes['IP'])
-                self._connections.put(cache_key, connection)
-                attributes['err'] = '0'
-                self.cef_log(connection_id, LDAPLogger.EVENT_ACCEPT, connection, attributes)
             else:
                 connection = self._connections.get(cache_key)
                 if not connection:
