@@ -41,9 +41,10 @@ class LDAPLogger(object):
     def format_message(self, connection_id, event_id, connection, attributes):
         # Get destinationUserId (duser) from cs2 if there is a uid in there
         if connection.op_subject and 'uid' in connection.op_subject:
-            duser = connection.op_subject[5:].split(',')[0]
+            duser = connection.op_subject[4:].split(',')[0]
         else:
-            duser = None
+            # None-type gives back None in the event formatted string
+            duser = ""
 
         return """CEF:0|OpenLDAP|SLAPD|1.0|{event_id}|{event_name}|6|src={src} spt={spt} suser={suser} duser={duser} cs1=\"{bind_name}\" cs1Label=BindDN  outcome={outcome} cs2=\"{subject_dn}\" cs2Label=SubjectDN cn1={conn_id} cn1Label=ConnId cn2={err} cn2Label=LdapCode end={end}\n""".format(
                 conn_id = connection_id,
