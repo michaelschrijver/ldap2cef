@@ -121,6 +121,18 @@ class LDAPProcessor(object):
             connection_id = int(message_match.group('conn'))
             cache_key = "{}:{}".format(server,connection_id)
             if command == 'ACCEPT':
+                try:
+                    address = attributes['IP']
+                except KeyError:
+                    try:
+                        address = 'unix:%s' % attributes['PATH']
+                    except KeyError:
+                        address = 'unknown:unknown'
+                connection = LDAPConnection(address)
+                self._connections.put(cache_key, connection)
+                attributes['err'] = '0'
+                self.cef_log(connection_id, LDAPLogger.EVENT_ACCEPT, connection, attributes)
+
                 connection = LDAPConnection(attributes['IP'])
                 self._connections.put(cache_key, connection)
                 attributes['err'] = '0'
@@ -138,7 +150,7 @@ class LDAPProcessor(object):
                     if command == 'BIND':
                         if 'anonymous' in attributes:
                             connection.new_bind_dn = 'ANONYMOUS'
-                        else:
+                        elif 'dn' in attributes:
                             connection.new_bind_dn = attributes['dn']
                     elif command in ('MOD', 'DEL', 'ADD'):
                         if attributes.has_key('dn'):
