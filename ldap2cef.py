@@ -40,7 +40,7 @@ class LDAPLogger(object):
 
     def format_message(self, connection_id, event_id, connection, attributes):
         # Get destinationUserId (duser) from cs2 if there is a uid in there
-        if 'uid' in connection.op_subject:
+        if connection.op_subject and 'uid' in connection.op_subject:
             duser = connection.op_subject[5:].split(',')[0]
         else:
             duser = None
